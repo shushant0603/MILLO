@@ -5,6 +5,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { OAuth2Client } from 'google-auth-library';
 import { db, connectDB } from './db.js';
 
 dotenv.config();
@@ -13,6 +14,8 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'chat_app_jwt_secret_token_12345';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '419526892822-otmkr37j2n6d8kuhtqp0en769d3jiqfp.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Avatar color palette for newly registered users
 const AVATAR_COLORS = [
@@ -124,7 +127,9 @@ app.post('/api/auth/register', async (req, res) => {
       username: newUser.username,
       name: newUser.name,
       bio: newUser.bio,
-      avatarColor: newUser.avatarColor
+      avatarColor: newUser.avatarColor,
+      avatar: newUser.avatar || null,
+      email: newUser.email || null
     };
 
     res.status(201).json({
@@ -168,7 +173,9 @@ app.post('/api/auth/login', async (req, res) => {
       username: user.username,
       name: user.name,
       bio: user.bio,
-      avatarColor: user.avatarColor
+      avatarColor: user.avatarColor,
+      avatar: user.avatar || null,
+      email: user.email || null
     };
 
     res.json({
@@ -179,6 +186,95 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login.' });
+  }
+});
+
+// Google OAuth Login / Signup
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential token is required.' });
+    }
+
+    // Verify token with Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(400).json({ message: 'Invalid Google token payload.' });
+    }
+
+    const { sub: googleId, email, name, picture } = payload;
+
+    // Check if user exists by googleId or email
+    let user = await db.findUserByGoogleId(googleId);
+
+    if (!user) {
+      user = await db.findUserByEmail(email);
+      if (user) {
+        // Link existing user with googleId & picture
+        await db.updateUser(user.id, {
+          googleId,
+          avatar: user.avatar || picture
+        });
+        user = await db.findUserById(user.id);
+      }
+    }
+
+    if (!user) {
+      // Create a unique username based on email or name
+      const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() || 'user';
+      let candidateUsername = baseUsername.slice(0, 15);
+      if (candidateUsername.length < 3) candidateUsername = `user_${candidateUsername}`;
+
+      let count = 0;
+      let finalUsername = candidateUsername;
+      while (await db.findUserByUsername(finalUsername)) {
+        count++;
+        finalUsername = `${candidateUsername}${count}`;
+      }
+
+      const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+      user = await db.createUser({
+        username: finalUsername,
+        name: name || finalUsername,
+        email,
+        googleId,
+        avatar: picture,
+        avatarColor: randomColor,
+        bio: 'Hey there! I am using ChatApp.'
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const userPayload = {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      bio: user.bio,
+      avatarColor: user.avatarColor,
+      avatar: user.avatar || null,
+      email: user.email || null
+    };
+
+    res.json({
+      message: 'Google authentication successful',
+      token,
+      user: userPayload
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(401).json({ message: 'Google authentication failed: ' + (error.message || 'Invalid token') });
   }
 });
 
@@ -196,7 +292,9 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
         username: user.username,
         name: user.name,
         bio: user.bio,
-        avatarColor: user.avatarColor
+        avatarColor: user.avatarColor,
+        avatar: user.avatar || null,
+        email: user.email || null
       }
     });
   } catch (error) {

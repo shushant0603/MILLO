@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { GoogleLogin } from '@react-oauth/google';
 import { api, setStoredToken, setStoredUser } from '../services/api';
 import { MessageSquare, UserPlus, LogIn, Sparkles, AlertCircle } from 'lucide-react';
 
@@ -61,6 +62,28 @@ export default function AuthModal({ onAuthSuccess }) {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    try {
+      if (!credentialResponse?.credential) {
+        throw new Error('No credential received from Google');
+      }
+      const res = await api.googleLogin(credentialResponse.credential);
+      setStoredToken(res.token);
+      setStoredUser(res.user);
+      onAuthSuccess(res.user);
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google Sign-In failed or was cancelled');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 overflow-hidden">
@@ -90,6 +113,32 @@ export default function AuthModal({ onAuthSuccess }) {
             <span>{error}</span>
           </div>
         )}
+
+        {/* Google Sign-In */}
+        <div className="mb-4">
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="filled_black"
+              shape="pill"
+              text={isLogin ? 'signin_with' : 'signup_with'}
+              size="large"
+              width="100%"
+            />
+          </div>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-800" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-slate-900 px-3 text-slate-500 font-medium uppercase tracking-wider">
+                Or continue with
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Auth form */}
         <form onSubmit={handleSubmit} className="space-y-3.5 relative">

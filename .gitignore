@@ -9,6 +9,7 @@ node_modules/
 *.env
 backend/.env
 frontend/.env
+*client_secret*.json
 
 # Production Build Artifacts
 dist/

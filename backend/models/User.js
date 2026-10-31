@@ -14,9 +14,22 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  email: {
+    type: String,
+    sparse: true,
+    lowercase: true,
+    trim: true
+  },
+  googleId: {
+    type: String,
+    sparse: true
+  },
+  avatar: {
+    type: String
+  },
   password: {
     type: String,
-    required: true
+    required: false
   },
   bio: {
     type: String,

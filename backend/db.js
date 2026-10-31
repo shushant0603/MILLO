@@ -106,6 +106,22 @@ class MongoDatabase {
     return json;
   }
 
+  async findUserByGoogleId(googleId) {
+    const user = await User.findOne({ googleId });
+    if (!user) return null;
+    const json = user.toJSON();
+    json.passwordHash = user.password;
+    return json;
+  }
+
+  async findUserByEmail(email) {
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return null;
+    const json = user.toJSON();
+    json.passwordHash = user.password;
+    return json;
+  }
+
   async findUserById(id) {
     if (!mongoose.Types.ObjectId.isValid(id)) return null;
     const user = await User.findById(id);
@@ -120,14 +136,26 @@ class MongoDatabase {
     return users.map(u => u.toJSON());
   }
 
-  async createUser({ username, name, passwordHash, bio, avatarColor }) {
+  async createUser({ username, name, passwordHash, bio, avatarColor, email, googleId, avatar }) {
     const user = await User.create({
       username: username.toLowerCase().trim(),
       name: name.trim(),
       password: passwordHash,
+      email: email ? email.toLowerCase().trim() : undefined,
+      googleId: googleId || undefined,
+      avatar: avatar || undefined,
       bio: bio || 'Hey there! I am using ChatApp.',
       avatarColor: avatarColor || '#4f46e5'
     });
+    const json = user.toJSON();
+    json.passwordHash = user.password;
+    return json;
+  }
+
+  async updateUser(id, updateData) {
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    const user = await User.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+    if (!user) return null;
     const json = user.toJSON();
     json.passwordHash = user.password;
     return json;
