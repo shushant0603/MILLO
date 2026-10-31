@@ -8,12 +8,16 @@ import { Message } from './models/Message.js';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chatapp';
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/chatapp';
 
 export async function connectDB() {
   try {
-    await mongoose.connect(MONGO_URI);
-    console.log(`🍃 Connected to MongoDB: ${MONGO_URI}`);
+    const isCloud = MONGO_URI.includes('mongodb+srv://');
+    console.log(`Connecting to MongoDB (${isCloud ? 'Atlas Cloud' : 'Local'})...`);
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 15000
+    });
+    console.log(`🍃 Connected to MongoDB successfully!`);
     await seedInitialDataIfEmpty();
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err.message);
