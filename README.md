@@ -83,3 +83,4 @@ App will run on `http://localhost:5173`.
 5. Set **Output Directory** to `dist`.
 6. Add Environment Variable:
    - `VITE_BACKEND_URL`: Your deployed backend URL (e.g., `https://your-backend.onrender.com`)
+
