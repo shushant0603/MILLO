@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment Variables (Keep secrets private!)
+.env
+.env.local
+.env.*.local
+*.env
+backend/.env
+frontend/.env
+
+# Production Build Artifacts
+dist/
+dist-ssr/
+build/
+*/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor & OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary / Local Database Cache
+backend/data/
+*.tmp
